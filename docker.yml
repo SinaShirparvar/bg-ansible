@@ -30,3 +30,11 @@
          push: yes
          source: build
 
+     - name: Build and Push image app-v4 to dockerhub with correct tag  
+       community.general.docker_image:
+         build:
+           path: /etc/ansible/apps/v4.0.0
+         repository: sinadockerhub/bg-image:v4
+         tag: v4.0.0
+         push: yes
+         source: build
