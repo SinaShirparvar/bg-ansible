@@ -1,0 +1,88 @@
+
+ - hosts: all
+   become: true
+   tasks: 
+     - name: "apt-get update"
+       apt:
+         update_cache: yes
+         cache_valid_time: 3600
+
+     - name: "install nginx"
+       apt: name=nginx state=present update_cache=yes
+     - name: start nginx
+       service:
+           name: nginx
+           state: started
+       become: yes
+     - name: Set up nginx config directory
+       file: path=/etc/nginx/{{ item }}
+             state=directory
+       with_items:
+         - sites-available
+         - sites-enabled
+   
+     - name: Generate the nginx configuration file      
+       copy: src=templates/nginx.conf
+             dest=/etc/nginx/nginx.conf
+   
+     - name: Deactivate the default nginx site
+       file: path=/etc/nginx/sites-enabled/default
+             state=absent
+   
+     - name: Add site for the app under development
+       when: app is defined
+       template: src=templates/nginx.site.conf.j2
+                 dest=/etc/nginx/sites-available/site
+   
+     - name: Activate the app
+       when: app is defined
+       file: src=/etc/nginx/sites-available/site
+             dest=/etc/nginx/sites-enabled/site
+             state=link
+
+     - name: restart nginx
+       service:
+         name: nginx
+         state: restarted
+       become: yes
+   tasks:
+     - name: Install aptitude using apt
+       apt: name=aptitude state=latest update_cache=yes force_apt_get=yes
+
+     - name: Install required system packages 
+       apt: name={{ item }} state=latest update_cache=yes
+       loop: [ 'apt-transport-https', 'ca-certificates', 'curl', 'software-properties-common', 'python3-pip', 'virtualenv', 'python3-setuptools']
+
+     - name: Add Docker GPG apt Key
+       apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+         
+     - name: Add Docker Repository
+       apt_repository:
+        repo: deb https://download.docker.com/linux/ubuntu bionic stable
+        state: present
+         
+     - name: Update apt and install docker-ce
+       apt: update_cache=yes name=docker-ce state=latest
+         
+     - name: Install Docker Module for Python
+       pip:
+        name: docker 
+    
+     - name: Set logging
+       community.general.ufw:
+         logging: 'on'
+
+     - community.general.ufw:
+         rule: allow
+         name: OpenSSH
+
+     - name: Allow all access to tcp port 3000
+       community.general.ufw:
+         rule: allow
+         port: '3000'
+         proto: tcp
+         state: enabled   
+
+              
