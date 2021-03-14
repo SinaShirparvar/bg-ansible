@@ -1,0 +1,32 @@
+#Building and pushing docker images to docker hub with correct tags.
+
+ - hosts: all
+   become: true
+   tasks:
+     - name: Build and Push image app-v1 to dockerhub with correct tag
+       community.general.docker_image:
+         build:
+           path: /etc/ansible/apps/v1.0.0
+         repository: sinadockerhub/bg-image:v1
+         tag: v1.0.0
+         push: yes
+         source: build         
+
+     - name: Build and Push image app-v2 to dockerhub with correct tag    
+       community.general.docker_image:
+         build:
+           path: /etc/ansible/apps/v2.0.0
+         repository: sinadockerhub/bg-image:v2
+         tag: v2.0.0
+         push: yes
+         source: build
+
+     - name: Build and Push image app-v3 to dockerhub with correct tag   
+       community.general.docker_image:
+         build:
+           path: /etc/ansible/apps/v3.0.0
+         repository: sinadockerhub/bg-image:v3
+         tag: v3.0.0
+         push: yes
+         source: build
+
