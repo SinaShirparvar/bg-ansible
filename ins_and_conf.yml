@@ -13,6 +13,10 @@
        service:
            name: nginx
            state: started
+       ports:
+           - 3000:3000
+       expose: 
+           - 3000
        become: yes
      - name: Set up nginx config directory
        file: path=/etc/nginx/{{ item }}
