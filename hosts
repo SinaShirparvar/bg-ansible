@@ -1,0 +1,9 @@
+[app]
+# These hostname must be resolvable from your deployment host
+vm-01 ansible_ssh_host=192.168.21.22 ansible_become=true
+vm-02 ansible_ssh_host=192.168.21.23 ansible_become=true
+vm-03 ansible_ssh_host=192.168.21.24 ansible_become=true
+
+[all:vars]
+ansible_python_interpreter=/usr/bin/python3
+
