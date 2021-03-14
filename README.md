@@ -1,5 +1,5 @@
 # bg-ansible
-a solution for having zero downtime in your web-apps and web-sites.
+a solution for having zero downtime in your web-apps while adding new versions of apps.
 
 #An ansible playbook for setting up and configuring the VMs. (Nginx or Haproxy, Docker and firewall should be configured)
 Step one Creating a config file for ansible named ansible.cfg in /etc/ansible/ansible.cfg.
