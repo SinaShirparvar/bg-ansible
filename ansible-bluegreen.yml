@@ -1,0 +1,108 @@
+---
+ 
+
+   app_name: snap-webApp
+   app_image: "sinadockerhub/bg-image"
+   app_port: 3000
+   app_version: latest
+   app_instances_count: 3
+   app_command: ""
+   app_etc_hosts: {}
+   app_env: {}
+   app_volumes: []
+   app_log_driver: none
+   app_log_options: {}
+   env: "{{ app_env }}"
+   app_port_prefix: 3000
+
+   app_bluegreen_enabled: yes
+   app_bluegreen_default_color: 'green'
+   app_bluegreen_tags:
+     blue:
+       name: 'blue'
+       port_prefix: 3001
+     green:
+       name: 'green'
+       port_prefix: 3002
+
+   app_nginx_enabled: yes
+   app_nginx_hostnames:
+     - app
+
+   app_nginx_upstream_name: "{{ app_name }}"
+   app_nginx_port: 80
+   app_nginx_ip_hash: yes
+   app_nginx_crossbalance_enabled: no
+   app_nginx_crossbalance_hosts: "{{ ansible_play_hosts }}"
+
+   app_old_containers_treatment_enabled: yes
+   app_old_containers_treatment_type: absent
+
+   app_healthcheck_enabled: yes
+   app_healthcheck_path: "etc/ansible/apps"
+
+   - name: ensure facts.d dir exists
+     file:
+       path: /etc/ansible/facts.d
+       state: directory
+
+   - name: do blue/green logic
+   include_tasks: pre_tasks.yml
+   when: app_bluegreen_enabled
+
+   - name: inform about ongoing deployment
+     debug:
+       msg:
+         - "DEPLOYING {{ app_name }}!"
+         - "{% if app_bluegreen_enabled %}Color of this deployment is {{ _app_next_color | upper }}.{% endif %}"
+         - "Version is {{ app_version }}."
+     run_once: yes
+     delegate_to: app
+
+     - name: deploy app
+       docker_container:
+         name: "{{ app_name }}{% if app_bluegreen_enabled %}_{{ _app_next_color }}{% endif %}_{{ item }}"
+         state: started
+         ports: "{{ app_port_prefix }}{{ item }}:{{ app_port }}"
+         image: "{{ app_image }}:{{ app_version }}"
+         command: "{{ app_command }}"
+         restart_policy: unless-stopped
+         etc_hosts: "{{ app_etc_hosts }}"
+         log_driver: "{{ app_log_driver }}"
+         log_options: "{{ app_log_options }}"
+         volumes: "{{ app_volumes }}"
+         loop: "{{ range(app_instances_count)|list }}"
+         register: _app_deployment
+
+     - name: detect app ports
+       set_fact:
+         _app_ports: "{{ _app_deployment.results | json_query('[].ansible_facts.docker_container.NetworkSettings.Ports[].*[][] ') }}"
+
+     - name: perform healthcheck on deployed containers
+       uri:
+         url: "{{ 'http://' + item.HostIp + ':' + item.HostPort + app_healthcheck_path }}"
+         method: GET
+         status_code: 200
+       retries: 20 
+       delay: 10
+       register: _app_healthcheck_result
+       until: _app_healthcheck_result.failed is defined
+       changed_when: False
+       when: app_healthcheck_enabled
+       with_items:
+         - "{{ _app_ports }}"
+
+     - name: generate nginx config for the application
+       template:
+         src: nginx.conf.j2
+         dest: "/etc/nginx/conf.d/{{ app_name }}.conf"
+       when: app_nginx_enabled
+       register: _nginx_config
+       notify:
+         - check nginx configuration
+         - reload nginx
+         - make test request to nginx
+    
+     - name: do blue/green logic
+       include_tasks: post_tasks.yml
+       when: app_bluegreen_enabled
