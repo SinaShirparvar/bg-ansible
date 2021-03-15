@@ -35,7 +35,7 @@
    
      - name: Add site for the app under development
        when: app is defined
-       template: src=templates/nginx.site.conf.j2
+       template: src=templates/nginx.conf.j2
                  dest=/etc/nginx/sites-available/site
    
      - name: Activate the app
