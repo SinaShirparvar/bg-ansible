@@ -43,6 +43,26 @@
        file: src=/etc/nginx/sites-available/site
              dest=/etc/nginx/sites-enabled/site
              state=link
+    
+     - name: check nginx configuration
+       command: nginx -t -c /etc/nginx/nginx.conf
+       register: _app_nginx_conf_check
+       changed_when: "_app_nginx_conf_check.rc != 0"
+
+     - name: reload nginx
+       service:
+       name: nginx
+        state: reloaded
+
+     - name: make test request to nginx
+       uri:
+         url: "{{ 'http://' + hostvars[hosts]['ansible_default_ipv4']['address'] + /etc/ansible/apps }}"
+         method: GET
+         headers:
+           Host: "{{ app_nginx_hostnames[0] }}"
+         status_code: 200
+       when:
+         - app_healthcheck_enabled        
 
      - name: restart nginx
        service:
